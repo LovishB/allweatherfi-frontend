@@ -1,13 +1,22 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 
-export const RebalanceLogic = () => {
-  const rebalanceData = `"trades": [
-    { "sell": "BOND", "amount_tokens": 9, "expected_proceeds": 36 },
-    { "sell": "GOLD", "amount_tokens": 4.33, "expected_proceeds": 78 },
-    { "buy": "EQUITY", "amount_tokens": 9.5, "spend": 114 }
-  ]`;
+
+interface RebalanceLogicProps {
+  currentAllocations?: {
+    equity: number;
+    gold: number;
+    bonds: number;
+  };
+}
+
+export const RebalanceLogic = ({ currentAllocations }: RebalanceLogicProps) => {
+  // Placeholder trades data
+  const trades = [
+    { trade: "Sell", asset: "BOND", amount: 9 },
+    { trade: "Sell", asset: "GOLD", amount: 4.33 },
+    { trade: "Buy", asset: "EQUITY", amount: 9.5 },
+  ];
 
   const handleExecuteSwaps = () => {
     console.log("Executing swaps...");
@@ -20,11 +29,26 @@ export const RebalanceLogic = () => {
         <CardTitle className="text-lg font-semibold">Rebalance Logic</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Textarea
-          value={rebalanceData}
-          readOnly
-          className="min-h-[200px] font-mono text-sm"
-        />
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm border border-gray-200 rounded">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="px-4 py-2 text-left">Trade</th>
+                <th className="px-4 py-2 text-left">Asset</th>
+                <th className="px-4 py-2 text-left">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {trades.map((t, idx) => (
+                <tr key={idx} className="border-t">
+                  <td className="px-4 py-2">{t.trade}</td>
+                  <td className="px-4 py-2">{t.asset}</td>
+                  <td className="px-4 py-2">{t.amount}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         <Button 
           onClick={handleExecuteSwaps}
           className="w-full"
@@ -35,3 +59,4 @@ export const RebalanceLogic = () => {
     </Card>
   );
 };
+// ...existing code...
