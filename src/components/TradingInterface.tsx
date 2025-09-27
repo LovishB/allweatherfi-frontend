@@ -5,11 +5,20 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useWallet } from "@/contexts/WalletContext";
-import { contractService } from "@/lib/contract";
+import { contractService, ContractService } from "@/lib/contract";
+import { ApiService } from "@/lib/api";
 import { RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-export const TradingInterface = () => {
+interface TradingInterfaceProps {
+  allocations?: {
+    equity: number;
+    gold: number;
+    bonds: number;
+  };
+}
+
+export const TradingInterface = ({ allocations }: TradingInterfaceProps) => {
   const [buyAmount, setBuyAmount] = useState("");
   const [sellAmount, setSellAmount] = useState("");
   const [activeTab, setActiveTab] = useState("buy");
@@ -38,8 +47,10 @@ export const TradingInterface = () => {
       // Get signer from wallet
       const signer = await contractService.getSigner();
       
-      // Default allocation: 40% S&P, 40% Bonds, 20% Gold
-      const weights = [40, 40, 20];
+      // Use allocation values from props, or default allocation if not provided
+      const weights = allocations 
+        ? [allocations.equity, allocations.bonds, allocations.gold]  // S&P, Bonds, Gold
+        : [40, 40, 20]; // Default allocation: 40% S&P, 40% Bonds, 20% Gold
       
       // Call buy function
       const result = await contractService.buyETF(signer, buyAmount, weights);
@@ -56,6 +67,54 @@ export const TradingInterface = () => {
         title: "Buy Order Successful",
         description: `Transaction confirmed! Block: ${receipt.blockNumber}`,
       });
+
+      // After successful transaction, call the backend API to mint tokens
+      try {
+        toast({
+          title: "Minting Tokens",
+          description: "Processing token mint on backend...",
+        });
+
+        // Get latest prices from contract
+        const prices = await contractService.getLatestPrices();
+        
+        // Map prices to the format expected by API
+        const priceEquity = parseFloat(ContractService.formatPrice(prices[0].rawPrice, prices[0].decimals));
+        const priceBonds = parseFloat(ContractService.formatPrice(prices[1].rawPrice, prices[1].decimals));
+        const priceGold = parseFloat(ContractService.formatPrice(prices[2].rawPrice, prices[2].decimals));
+        const priceHbar = parseFloat(ContractService.formatPrice(prices[3].rawPrice, prices[3].decimals));
+
+        // Prepare API request
+        const mintRequest = {
+          userWalletAddress: account,
+          amountHbar: parseFloat(buyAmount),
+          priceHbar: priceHbar,
+          priceEquity: priceEquity,
+          priceBonds: priceBonds,
+          priceGold: priceGold,
+          weightEquity: weights[0] / 100, // Convert percentage to decimal - Equity
+          weightBonds: weights[1] / 100,  // Convert percentage to decimal - Bonds  
+          weightGold: weights[2] / 100,   // Convert percentage to decimal - Gold
+        };
+
+        // Call backend API
+        const mintResponse = await ApiService.checkMint(mintRequest);
+        
+        toast({
+          title: "Tokens Minted Successfully",
+          description: `Total investment: $${mintResponse.totalInvestmentUsd.toFixed(2)} USD. Tokens minted: ${mintResponse.tokensToMint.equity.toFixed(2)} equity, ${mintResponse.tokensToMint.bonds.toFixed(2)} bonds, ${mintResponse.tokensToMint.gold.toFixed(2)} gold.`,
+        });
+
+        console.log("Mint response:", mintResponse);
+        
+      } catch (mintError: any) {
+        console.error("Token minting failed:", mintError);
+        toast({
+          title: "Token Minting Failed",
+          description: mintError.message || "Failed to mint tokens on backend",
+          variant: "destructive",
+        });
+      }
 
       setBuyAmount("");
       await refreshBalance();
@@ -177,6 +236,14 @@ export const TradingInterface = () => {
                 <div className="text-xs text-muted-foreground">
                   Available: {hbarBalance} HBAR
                 </div>
+                {allocations && (
+                  <div className="text-xs text-muted-foreground p-2 bg-muted rounded">
+                    <div className="font-medium mb-1">Current Allocation:</div>
+                    <div>• Equity: {allocations.equity}%</div>
+                    <div>• Bonds: {allocations.bonds}%</div>
+                    <div>• Gold: {allocations.gold}%</div>
+                  </div>
+                )}
               </div>
               <Button 
                 onClick={handleBuy} 

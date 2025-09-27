@@ -67,7 +67,7 @@ export const Dashboard = () => {
 
           {/* Right side - Trading Interface and Prices (30%) */}
           <div className="lg:col-span-3 space-y-6">
-            <TradingInterface />
+            <TradingInterface allocations={allocations} />
             <PriceDisplay />
           </div>
         </div>

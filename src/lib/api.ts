@@ -59,6 +59,53 @@ export interface RebalanceCheckResponse {
   explanation: string;
 }
 
+export interface CheckMintRequest {
+  userWalletAddress: string;
+  amountHbar: number;
+  priceHbar: number;
+  priceEquity: number;
+  priceBonds: number;
+  priceGold: number;
+  weightEquity: number;
+  weightGold: number;
+  weightBonds: number;
+}
+
+export interface CheckMintResponse {
+  userWalletAddress: string;
+  totalInvestmentUsd: number;
+  allocations: {
+    equity: number;
+    gold: number;
+    bonds: number;
+  };
+  tokensToMint: {
+    equity: number;
+    gold: number;
+    bonds: number;
+  };
+  transactions?: {
+    equity: {
+      mintTxId: string;
+      transferTxId: string;
+      hashscanMintUrl: string;
+      hashscanTransferUrl: string;
+    };
+    gold: {
+      mintTxId: string;
+      transferTxId: string;
+      hashscanMintUrl: string;
+      hashscanTransferUrl: string;
+    };
+    bonds: {
+      mintTxId: string;
+      transferTxId: string;
+      hashscanMintUrl: string;
+      hashscanTransferUrl: string;
+    };
+  };
+}
+
 export class ApiService {
   static async getPortfolio(request: GetPortfolioRequest): Promise<GetPortfolioResponse> {
     try {
@@ -100,6 +147,29 @@ export class ApiService {
       return data;
     } catch (error) {
       console.error('Error checking rebalance:', error);
+      throw error;
+    }
+  }
+
+  static async checkMint(request: CheckMintRequest): Promise<CheckMintResponse> {
+    try {
+      console.log('CheckMint request:', request);
+      const response = await fetch(`${API_BASE_URL}/checkMint`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error checking mint:', error);
       throw error;
     }
   }
