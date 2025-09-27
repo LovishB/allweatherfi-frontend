@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AllocationChart } from "./AllocationChart";
 import { AllocationSliders } from "./AllocationSliders";
 import { TradingInterface } from "./TradingInterface";
+import { PriceDisplay } from "./PriceDisplay";
 
 export const Dashboard = () => {
   const [allocations, setAllocations] = useState({
@@ -64,9 +65,10 @@ export const Dashboard = () => {
             </Card>
           </div>
 
-          {/* Right side - Trading Interface (30%) */}
-          <div className="lg:col-span-3">
+          {/* Right side - Trading Interface and Prices (30%) */}
+          <div className="lg:col-span-3 space-y-6">
             <TradingInterface />
+            <PriceDisplay />
           </div>
         </div>
       </div>

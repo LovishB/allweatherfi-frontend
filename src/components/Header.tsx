@@ -1,12 +1,25 @@
 import { Button } from "@/components/ui/button";
 import { useNavigate, useLocation } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
+import { 
+  switchToHederaTestnet, 
+  getHbarBalance, 
+  isConnectedToHederaTestnet 
+} from "@/lib/hedera";
+import { useWallet } from "@/contexts/WalletContext";
 
 export const Header = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [account, setAccount] = useState<string>("");
-  const [isConnecting, setIsConnecting] = useState(false);
+  const { 
+    account, 
+    hbarBalance, 
+    isConnecting, 
+    setAccount, 
+    setHbarBalance, 
+    setIsConnecting,
+    refreshBalance 
+  } = useWallet();
 
   // Check if MetaMask is installed
   const isMetaMaskInstalled = () => {
@@ -19,38 +32,53 @@ export const Header = () => {
       checkConnection();
       // Listen for account changes
       window.ethereum.on('accountsChanged', handleAccountsChanged);
-      window.ethereum.on('chainChanged', () => {
-        window.location.reload();
-      });
+      window.ethereum.on('chainChanged', handleChainChanged);
     }
     
     return () => {
       if (isMetaMaskInstalled()) {
         window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
-        window.ethereum.removeListener('chainChanged', () => {
-          window.location.reload();
-        });
+        window.ethereum.removeListener('chainChanged', handleChainChanged);
       }
     };
   }, []);
+
+  // Refresh balance when account changes
+  useEffect(() => {
+    if (account) {
+      refreshBalance();
+    } else {
+      setHbarBalance("0");
+    }
+  }, [account]);
 
   const checkConnection = async () => {
     try {
       const accounts = await window.ethereum.request({ method: 'eth_accounts' });
       if (accounts.length > 0) {
         setAccount(accounts[0]);
+        // Check if on Hedera testnet, if not, try to switch
+        const isOnHedera = await isConnectedToHederaTestnet();
+        if (!isOnHedera) {
+          await switchToHederaTestnet();
+        }
       }
     } catch (error) {
       console.error('Error checking connection:', error);
     }
   };
 
-  const handleAccountsChanged = (accounts: string[]) => {
+  const handleAccountsChanged = async (accounts: string[]) => {
     if (accounts.length > 0) {
       setAccount(accounts[0]);
     } else {
       setAccount("");
     }
+  };
+
+  const handleChainChanged = async () => {
+    // Refresh the page when chain changes to ensure proper state
+    window.location.reload();
   };
 
   const connectWallet = async () => {
@@ -61,11 +89,25 @@ export const Header = () => {
 
     setIsConnecting(true);
     try {
+      // First, try to switch to Hedera testnet
+      const switched = await switchToHederaTestnet();
+      if (!switched) {
+        alert('Please switch to Hedera Testnet to continue');
+        setIsConnecting(false);
+        return;
+      }
+
+      // Request account access
       const accounts = await window.ethereum.request({
         method: 'eth_requestAccounts',
       });
       setAccount(accounts[0]);
-    } catch (error) {
+      
+      // Get initial balance
+      const balance = await getHbarBalance(accounts[0]);
+      setHbarBalance(balance);
+      
+    } catch (error: any) {
       console.error('Error connecting wallet:', error);
       if (error.code === 4001) {
         alert('Please connect to MetaMask.');
@@ -79,6 +121,7 @@ export const Header = () => {
 
   const disconnectWallet = () => {
     setAccount("");
+    setHbarBalance("0");
   };
 
   const formatAddress = (address: string) => {
@@ -127,6 +170,9 @@ export const Header = () => {
           {/* Wallet Connect Button */}
           {account ? (
             <div className="flex items-center space-x-2">
+              <div className="text-sm text-muted-foreground">
+                {hbarBalance} HBAR
+              </div>
               <Button 
                 variant="outline"
                 onClick={disconnectWallet}
