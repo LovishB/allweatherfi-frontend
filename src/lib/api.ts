@@ -26,6 +26,39 @@ export interface GetPortfolioResponse {
   balances: TokenBalance[];
 }
 
+export interface RebalanceCheckRequest {
+  userWallet: string;
+  balanceOfEquity: number;
+  balanceOfGold: number;
+  balanceOfBonds: number;
+  priceOfEquity: number;
+  priceOfGold: number;
+  priceOfBonds: number;
+  currentWeightEquity: number;
+  currentWeightGold: number;
+  currentWeightBonds: number;
+  targetWeightEquity: number;
+  targetWeightGold: number;
+  targetWeightBonds: number;
+}
+
+export interface RebalanceCheckResponse {
+  userWallet: string;
+  rebalancePlan: {
+    mint: {
+      equity: number;
+      gold: number;
+      bonds: number;
+    };
+    burn: {
+      equity: number;
+      gold: number;
+      bonds: number;
+    };
+  };
+  explanation: string;
+}
+
 export class ApiService {
   static async getPortfolio(request: GetPortfolioRequest): Promise<GetPortfolioResponse> {
     try {
@@ -45,6 +78,28 @@ export class ApiService {
       return data;
     } catch (error) {
       console.error('Error fetching portfolio:', error);
+      throw error;
+    }
+  }
+
+  static async rebalanceCheck(request: RebalanceCheckRequest): Promise<RebalanceCheckResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/rebalanceCheck`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error checking rebalance:', error);
       throw error;
     }
   }

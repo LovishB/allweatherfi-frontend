@@ -4,7 +4,7 @@ import { AllocationChart } from "@/components/AllocationChart";
 import { AllocationSliders } from "@/components/AllocationSliders";
 import { RebalanceLogic } from "@/components/RebalanceLogic";
 import { useWallet } from "@/contexts/WalletContext";
-import { ApiService, GetPortfolioRequest } from "@/lib/api";
+import { ApiService, GetPortfolioRequest, GetPortfolioResponse } from "@/lib/api";
 import { ContractService } from "@/lib/contract";
 import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
@@ -15,6 +15,12 @@ export default function Rebalance() {
     equity: 60,
     gold: 25,
     bonds: 15,
+  });
+  const [portfolioData, setPortfolioData] = useState<GetPortfolioResponse | null>(null);
+  const [currentPrices, setCurrentPrices] = useState({
+    equity: 1.2,
+    bonds: 1.0,
+    gold: 2.5,
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,6 +63,13 @@ export default function Rebalance() {
       const priceBonds = parsePrice(prices[1], 1.0);  // LQD price  
       const priceGold = parsePrice(prices[2], 2.5);   // Gold price
 
+      // Store current prices
+      setCurrentPrices({
+        equity: priceEquity,
+        bonds: priceBonds,
+        gold: priceGold,
+      });
+
       // Call backend API
       const request: GetPortfolioRequest = {
         userWallet: account,
@@ -66,6 +79,9 @@ export default function Rebalance() {
       };
 
       const portfolioResponse = await ApiService.getPortfolio(request);
+      
+      // Store portfolio data
+      setPortfolioData(portfolioResponse);
       
       // Round the allocations to ensure they sum to 100%
       const roundedAllocations = ApiService.roundAllocationsToHundred({
@@ -150,8 +166,8 @@ export default function Rebalance() {
         )}
 
         <div className="grid grid-cols-10 gap-6">
-          {/* Left Side - Chart and Sliders (70%) */}
-          <div className="col-span-7 space-y-6">
+          {/* Left Side - Chart and Sliders (60%) */}
+          <div className="col-span-6 space-y-6">
             <AllocationChart allocations={allocations} />
             <AllocationSliders 
               allocations={allocations} 
@@ -159,9 +175,13 @@ export default function Rebalance() {
             />
           </div>
 
-          {/* Right Side - Rebalance Logic (30%) */}
-          <div className="col-span-3">
-            <RebalanceLogic currentAllocations={allocations} />
+          {/* Right Side - Rebalance Logic (40%) */}
+          <div className="col-span-4">
+            <RebalanceLogic 
+              currentAllocations={allocations} 
+              portfolioData={portfolioData}
+              currentPrices={currentPrices}
+            />
           </div>
         </div>
       </div>
